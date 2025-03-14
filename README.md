@@ -15,9 +15,9 @@ db = Store.create("databasename")
 #get path to database
 path = db.path()
 #add values
-db.get("key",[1,2,3,4])
+db.set("key",[1,2,3,4])
 #get values
-db.set("key")
+db.get("key")
 #remove values
 db.rm("key")
 #clear the database (requires confirmation if not specified as erase(conf="y")
