@@ -3,9 +3,9 @@ import os
 import pathlib
 import shutil
 #import squlite3
-sqlite3="x"  # This line is kept as-is since you don't want to fix SQLite
+sqlite3="x"  
 import json
-import stat  # Added this import as it's needed for shutil_error_path
+import stat  
 
 class LocalStoreStorageException(Exception):
     pass
@@ -46,7 +46,6 @@ class TextStorageBackend(BasicStorageBackend):
         func(path)
 
     def get_file_path(self, key: str) -> os.PathLike:
-        # Basic security check
         if os.sep in key or key.startswith('.'):
             raise LocalStoreStorageException("Invalid key name")
         return os.path.join(self.app_storage_path, key)
@@ -75,7 +74,7 @@ class TextStorageBackend(BasicStorageBackend):
         os.makedirs(self.app_storage_path)
 
 
-# SQLite backend remains unchanged since you don't want to modify it
+
 class SQLiteStorageBackend(BasicStorageBackend):
     def __init__(self, app_namespace: str) -> None:
         super().__init__(app_namespace)
@@ -127,7 +126,7 @@ class JSONStorageBackend(BasicStorageBackend):
                 with open(self.json_path, "r") as json_file:
                     self.json_data = json.load(json_file)
             except json.JSONDecodeError:
-                # Handle corrupted JSON file
+                # error handling rahhhh
                 self.json_data = {}
                 self.commit_to_disk()
 
@@ -141,7 +140,7 @@ class JSONStorageBackend(BasicStorageBackend):
         return None
 
     def set_item(self, key: str, value: any) -> None:
-        # Try to preserve native types when possible
+        # what if
         if isinstance(value, (dict, list, str, int, float, bool, type(None))):
             self.json_data[key] = value
         else:
