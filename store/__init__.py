@@ -3,8 +3,9 @@ import os
 import pathlib
 import shutil
 #import squlite3
-sqlite3="x"
+sqlite3="x"  
 import json
+import stat  
 
 class LocalStoreStorageException(Exception):
     pass
@@ -45,6 +46,8 @@ class TextStorageBackend(BasicStorageBackend):
         func(path)
 
     def get_file_path(self, key: str) -> os.PathLike:
+        if os.sep in key or key.startswith('.'):
+            raise LocalStoreStorageException("Invalid key name")
         return os.path.join(self.app_storage_path, key)
 
     def get_item(self, key: str) -> str:
@@ -118,9 +121,14 @@ class JSONStorageBackend(BasicStorageBackend):
 
         if not os.path.isfile(self.json_path):
             self.commit_to_disk()
-
-        with open(self.json_path, "r") as json_file:
-            self.json_data = json.load(json_file)
+        else:
+            try:
+                with open(self.json_path, "r") as json_file:
+                    self.json_data = json.load(json_file)
+            except json.JSONDecodeError:
+                # error handling rahhhh
+                self.json_data = {}
+                self.commit_to_disk()
 
     def commit_to_disk(self):
         with open(self.json_path, "w") as json_file:
@@ -132,12 +140,17 @@ class JSONStorageBackend(BasicStorageBackend):
         return None
 
     def set_item(self, key: str, value: any) -> None:
-        self.json_data[key] = str(value)
+        # what if
+        if isinstance(value, (dict, list, str, int, float, bool, type(None))):
+            self.json_data[key] = value
+        else:
+            self.json_data[key] = str(value)
         self.commit_to_disk()
 
     def remove_item(self, key: str) -> None:
-        self.json_data.pop(key)
-        self.commit_to_disk()
+        if key in self.json_data:
+            del self.json_data[key]
+            self.commit_to_disk()
 
     def clear(self) -> None:
         if os.path.isfile(self.json_path):
@@ -155,16 +168,17 @@ class Storage:
         elif storage_backend == "json":
             self.storage_backend_instance = JSONStorageBackend(app_namespace)
         else:
-            self.storage_backend_instance = SQLiteStorageBackend(app_namespace)
+            self.storage_backend_instance = JSONStorageBackend(app_namespace)
+            
     def path(self):
         for x in self.storage_backend_instance.__dict__:
             if "path" in x:
                 return self.storage_backend_instance.__dict__[x]
+                
     def prev(self):
         for x in self.storage_backend_instance.__dict__:
             if "data" in x:
                 return self.storage_backend_instance.__dict__[x]
-
 
     def get(self, item: str) -> any:
         return self.storage_backend_instance.get_item(item)
@@ -177,13 +191,26 @@ class Storage:
 
     def cls(self):
         self.storage_backend_instance.clear()
-    def erase(self,conf="n"):
-        x = input(f"Are you sure you want to erase the database [Y]/[n]?\n{self.path()}: ")
-        if x.lower() != "y" and conf != "y":
-            return print("Aborted Erasure.")
-        os.remove(self.path())
+        
+    def erase(self, conf="n"):
+        db_path = self.path()
+        if not db_path or not os.path.exists(db_path):
+            return print("Database does not exist.")
+            
+        if conf.lower() == "y":
+            os.remove(db_path)
+            return print(f"Database erased: {db_path}")
+            
+        x = input(f"Are you sure you want to erase the database [Y]/[n]?\n{db_path}: ")
+        if x.lower() == "y":
+            os.remove(db_path)
+            print(f"Database erased: {db_path}")
+        else:
+            print("Aborted Erasure.")
+            
 class Store:
     def create(app_namespace: str, storage_backend: str = "json"):
-        return Storage(app_namespace,storage_backend)
+        return Storage(app_namespace, storage_backend)
+        
     def delete(obj):
         obj.cls()
